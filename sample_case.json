@@ -1,0 +1,10 @@
+{
+  "patient_name": "Rajesh Kumar",
+  "patient_phone": "9876543210",
+  "aadhaar_last4": "1234",
+  "hospital_name": "Fortis Hospital Bangalore",
+  "admission_date": "2026-05-27",
+  "estimated_bill_inr": 85000,
+  "insurance_policy_no": "HDFC-HLTH-2024-789",
+  "tpa_name": "Medi Assist"
+}
