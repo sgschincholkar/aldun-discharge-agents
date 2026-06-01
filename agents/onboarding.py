@@ -146,10 +146,11 @@ def _execute_tool(name: str, inputs: dict, case_id: str, case_row: dict, db_path
     return {"error": f"Unknown tool: {name}"}
 
 
-def run(case_id: str, db_path: str = "cases.db") -> bool:
-    """Run onboarding agent. Returns True if successful, False otherwise."""
+def run(case_id: str, db_path: str = "cases.db") -> dict:
+    """Run onboarding agent. Returns {success, trace} where trace is a list of events."""
     print("\n[Agent 1 — Onboarding]")
     case_row = get_case(case_id, db_path)
+    trace = []  # structured event list for UI
 
     system_prompt = f"""You are the Aldun Patient Onboarding Agent.
 Your job is to onboard a patient for instant hospital discharge by verifying their identity and securing credit approval.
@@ -195,7 +196,19 @@ Complete all steps. Do not skip any."""
 
             for tc in msg.tool_calls:
                 args = json.loads(tc.function.arguments)
+                # Log tool call to trace BEFORE executing
+                trace.append({
+                    "type": "tool_call",
+                    "name": tc.function.name,
+                    "args": args,
+                })
                 result = _execute_tool(tc.function.name, args, case_id, case_row, db_path)
+                # Log tool response to trace
+                trace.append({
+                    "type": "tool_result",
+                    "name": tc.function.name,
+                    "result": result,
+                })
                 if tc.function.name == "check_credit_score_nbfc":
                     case_row["_temp_cibil_score"] = result.get("cibil_score", 742)
                 messages.append({
@@ -212,20 +225,28 @@ Complete all steps. Do not skip any."""
             "onboarding_status": "complete",
         }, db_path)
         log_event(case_id, "onboarding", "onboarding_complete", {}, db_path)
+        trace.append({"type": "summary", "lines": [
+            "✓ Aadhaar OTP verified",
+            f"✓ Credit approved Rs {case_row['estimated_bill_inr']:,.0f}",
+            "✓ Payment consent captured",
+            "→ Onboarding complete",
+        ]})
         print("  ✓ Aadhaar OTP verified")
         print(f"  ✓ Credit approved Rs {case_row['estimated_bill_inr']:,.0f}")
         print("  ✓ Payment consent captured")
         print("  → Onboarding complete")
-        return True
+        return {"success": True, "trace": trace}
 
     except GuardrailError as e:
         update_case(case_id, {"onboarding_status": "GUARDRAIL_FAILED"}, db_path)
         log_event(case_id, "guardrail", "onboarding_guardrail_failed", {"error": str(e)}, db_path)
+        trace.append({"type": "error", "message": f"GUARDRAIL FAILED: {e}"})
         print(f"  ✗ GUARDRAIL FAILED: {e}")
-        return False
+        return {"success": False, "trace": trace}
 
     except Exception as e:
         update_case(case_id, {"onboarding_status": "AGENT_ERROR"}, db_path)
         log_event(case_id, "onboarding", "agent_error", {"error": str(e)}, db_path)
+        trace.append({"type": "error", "message": f"AGENT ERROR: {e}"})
         print(f"  ✗ AGENT ERROR: {e}")
-        return False
+        return {"success": False, "trace": trace}

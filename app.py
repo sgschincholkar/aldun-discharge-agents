@@ -6,7 +6,6 @@ Open: http://localhost:5000
 import json
 import sys
 import os
-from io import StringIO
 from flask import Flask, request, jsonify, render_template_string
 
 # Add project root to path so agents can import db, guardrails, tools
@@ -180,6 +179,27 @@ HTML = """<!DOCTYPE html>
     .val-green { color: #4ade80 !important; }
     .val-red { color: #f87171 !important; }
 
+    /* Tool calls */
+    .tool-call {
+      color: #7dd3fc;
+      font-size: 11px;
+      padding: 4px 0 2px 0;
+      border-top: 1px solid #1e293b;
+      margin-top: 4px;
+    }
+    .tool-call:first-child { border-top: none; margin-top: 0; }
+    .tool-name { color: #38bdf8; font-weight: bold; }
+    .tool-args { color: #94a3b8; }
+    .tool-result {
+      color: #475569;
+      font-size: 10px;
+      padding: 2px 0 6px 12px;
+      border-left: 2px solid #1e293b;
+      margin-left: 8px;
+      word-break: break-all;
+      white-space: pre-wrap;
+    }
+
     /* Spinner */
     .spinner {
       display: inline-block;
@@ -300,35 +320,9 @@ HTML = """<!DOCTYPE html>
       const out = document.getElementById('output');
       let html = '';
 
-      // Agent 1 block
-      const a1status = r.agent1.success ? 'complete' : 'failed';
-      html += `
-        <div class="agent-block">
-          <div class="agent-header">
-            <span class="agent-name">Agent 1 — Onboarding</span>
-            <span class="status-badge status-${a1status}">● ${a1status}</span>
-          </div>
-          <div class="agent-body">
-            ${r.agent1.lines.map(l => `<div class="${lineClass(l)}">${escHtml(l)}</div>`).join('')}
-          </div>
-        </div>`;
+      if (r.agent1) html += renderAgentBlock('Agent 1 — Onboarding', r.agent1);
+      if (r.agent2) html += renderAgentBlock('Agent 2 — Discharge & Claims', r.agent2);
 
-      // Agent 2 block (only if agent 1 succeeded)
-      if (r.agent2) {
-        const a2status = r.agent2.success ? 'complete' : 'failed';
-        html += `
-          <div class="agent-block">
-            <div class="agent-header">
-              <span class="agent-name">Agent 2 — Discharge & Claims</span>
-              <span class="status-badge status-${a2status}">● ${a2status}</span>
-            </div>
-            <div class="agent-body">
-              ${r.agent2.lines.map(l => `<div class="${lineClass(l)}">${escHtml(l)}</div>`).join('')}
-            </div>
-          </div>`;
-      }
-
-      // Summary
       if (r.case_summary) {
         const s = r.case_summary;
         html += `
@@ -348,16 +342,40 @@ HTML = """<!DOCTYPE html>
       out.innerHTML = html;
     }
 
+    function renderAgentBlock(name, agent) {
+      const status = agent.success ? 'complete' : 'failed';
+      let rows = '';
+      for (const event of agent.trace) {
+        if (event.type === 'tool_call') {
+          const argsStr = Object.entries(event.args).map(([k,v]) => `${k}=${JSON.stringify(v)}`).join(', ');
+          rows += `<div class="tool-call">→ <span class="tool-name">${escHtml(event.name)}</span>(<span class="tool-args">${escHtml(argsStr)}</span>)</div>`;
+        } else if (event.type === 'tool_result') {
+          rows += `<div class="tool-result">${escHtml(JSON.stringify(event.result, null, 0))}</div>`;
+        } else if (event.type === 'summary') {
+          rows += event.lines.map(l => `<div class="${lineClass(l)}">${escHtml(l)}</div>`).join('');
+        } else if (event.type === 'error') {
+          rows += `<div class="line-err">✗ ${escHtml(event.message)}</div>`;
+        }
+      }
+      return `
+        <div class="agent-block">
+          <div class="agent-header">
+            <span class="agent-name">${name}</span>
+            <span class="status-badge status-${status}">● ${status}</span>
+          </div>
+          <div class="agent-body">${rows}</div>
+        </div>`;
+    }
+
     function lineClass(line) {
       if (line.includes('✓')) return 'line-ok';
       if (line.includes('→')) return 'line-done';
       if (line.includes('✗') || line.includes('FAILED') || line.includes('ERROR')) return 'line-err';
-      if (line.includes('GUARDRAIL') || line.includes('⚠')) return 'line-warn';
       return 'line-done';
     }
 
     function escHtml(str) {
-      return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+      return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
     }
 
     function resetUI() {
@@ -382,54 +400,24 @@ def index():
 def run_agents():
     data = request.get_json()
 
-    # Init DB and create case
     init_db(DB_PATH)
     case_id = create_case(data, db_path=DB_PATH)
 
-    # Capture Agent 1 output
-    agent1_lines = []
-    agent1_success = False
-    old_stdout = sys.stdout
-    sys.stdout = buf = StringIO()
-
-    try:
-        from agents.onboarding import run as run_onboarding
-        agent1_success = run_onboarding(case_id, db_path=DB_PATH)
-    except Exception as e:
-        agent1_success = False
-        print(f"  ✗ AGENT ERROR: {e}")
-    finally:
-        sys.stdout = old_stdout
-        raw = buf.getvalue()
-        agent1_lines = [l for l in raw.splitlines() if l.strip() and not l.startswith("[Agent")]
+    from agents.onboarding import run as run_onboarding
+    a1 = run_onboarding(case_id, db_path=DB_PATH)
 
     result = {
         "case_id": case_id,
-        "agent1": {"success": agent1_success, "lines": agent1_lines},
+        "agent1": {"success": a1["success"], "trace": a1["trace"]},
         "agent2": None,
         "case_summary": None,
     }
 
-    # Run Agent 2 only if Agent 1 succeeded
-    if agent1_success:
-        agent2_lines = []
-        agent2_success = False
-        sys.stdout = buf2 = StringIO()
+    if a1["success"]:
+        from agents.discharge_claims import run as run_discharge
+        a2 = run_discharge(case_id, db_path=DB_PATH)
+        result["agent2"] = {"success": a2["success"], "trace": a2["trace"]}
 
-        try:
-            from agents.discharge_claims import run as run_discharge
-            agent2_success = run_discharge(case_id, db_path=DB_PATH)
-        except Exception as e:
-            agent2_success = False
-            print(f"  ✗ AGENT ERROR: {e}")
-        finally:
-            sys.stdout = old_stdout
-            raw2 = buf2.getvalue()
-            agent2_lines = [l for l in raw2.splitlines() if l.strip() and not l.startswith("[Agent")]
-
-        result["agent2"] = {"success": agent2_success, "lines": agent2_lines}
-
-    # Fetch case summary from DB
     case_row = get_case(case_id, db_path=DB_PATH)
     result["case_summary"] = {
         "case_id": case_id,
@@ -448,4 +436,4 @@ if __name__ == "__main__":
     print("\n🏥 Aldun Agent Test UI")
     print("   Open: http://localhost:5000")
     print("   Set OPENROUTER_API_KEY before running\n")
-    app.run(debug=False, port=5000)
+    app.run(debug=False, port=5001)

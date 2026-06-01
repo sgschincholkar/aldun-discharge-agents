@@ -171,6 +171,7 @@ Complete all steps."""
         {"role": "user", "content": "Please complete discharge processing and file the insurance claim."},
     ]
     claim_result = {}
+    trace = []
 
     try:
         client = _get_client()
@@ -190,7 +191,9 @@ Complete all steps."""
 
             for tc in msg.tool_calls:
                 args = json.loads(tc.function.arguments)
+                trace.append({"type": "tool_call", "name": tc.function.name, "args": args})
                 result = _execute_tool(tc.function.name, args, case_id, case_row, db_path)
+                trace.append({"type": "tool_result", "name": tc.function.name, "result": result})
                 if tc.function.name == "file_claim_to_tpa":
                     claim_result = result
                 messages.append({
@@ -207,21 +210,30 @@ Complete all steps."""
             "discharge_status": "complete",
         }, db_path)
         log_event(case_id, "discharge_claims", "discharge_complete", {}, db_path)
+        trace.append({"type": "summary", "lines": [
+            "✓ KYC docs and EHR fetched",
+            "✓ Claim packet assembled",
+            f"✓ Claim filed → {claim_result.get('claim_id', 'TPA-2026-001234')}",
+            "✓ Patient notified via WhatsApp",
+            "→ Discharge complete, claim filed",
+        ]})
         print("  ✓ KYC docs and EHR fetched")
         print("  ✓ Claim packet assembled")
         print(f"  ✓ Claim filed → {claim_result.get('claim_id', 'TPA-2026-001234')}")
         print("  ✓ Patient notified via WhatsApp")
         print("  → Discharge complete, claim filed")
-        return True
+        return {"success": True, "trace": trace}
 
     except GuardrailError as e:
         update_case(case_id, {"claim_status": "GUARDRAIL_FAILED"}, db_path)
         log_event(case_id, "guardrail", "discharge_guardrail_failed", {"error": str(e)}, db_path)
+        trace.append({"type": "error", "message": f"GUARDRAIL FAILED: {e}"})
         print(f"  ✗ GUARDRAIL FAILED: {e}")
-        return False
+        return {"success": False, "trace": trace}
 
     except Exception as e:
         update_case(case_id, {"claim_status": "AGENT_ERROR"}, db_path)
         log_event(case_id, "discharge_claims", "agent_error", {"error": str(e)}, db_path)
+        trace.append({"type": "error", "message": f"AGENT ERROR: {e}"})
         print(f"  ✗ AGENT ERROR: {e}")
-        return False
+        return {"success": False, "trace": trace}
