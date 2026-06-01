@@ -1,2 +1,2 @@
-litellm>=1.40.0
+openai>=1.30.0
 pytest>=8.0.0

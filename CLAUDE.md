@@ -5,10 +5,14 @@
 Agents chain directly: Onboarding → Discharge & Claims → Payment Collection.
 State shared via SQLite (cases.db). All integrations mocked in v1.
 
-## Model IDs
-- Agent 1 (Onboarding): `openrouter/qwen/qwen3.5-flash-02-23`
-- Agent 2 (Discharge & Claims): `openrouter/qwen/qwen3.5-flash-02-23`
-- Agent 3 (Payment): `groq/llama-3.3-70b-versatile`
+## LLM Stack
+OpenAI Python SDK (`openai>=1.30.0`) pointed at OpenRouter — no LiteLLM, no Groq.
+
+| Agent | Model | base_url | Env var |
+|---|---|---|---|
+| Agent 1 (Onboarding) | `qwen/qwen3.5-flash-02-23` | `https://openrouter.ai/api/v1` | `OPENROUTER_API_KEY` |
+| Agent 2 (Discharge & Claims) | `qwen/qwen3.5-flash-02-23` | `https://openrouter.ai/api/v1` | `OPENROUTER_API_KEY` |
+| Agent 3 (Payment) | `qwen/qwen3.5-flash-02-23` | `https://openrouter.ai/api/v1` | `OPENROUTER_API_KEY` |
 
 ## HITL Trigger Points (NOT implemented in v1 — implement before production)
 

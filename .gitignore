@@ -1,0 +1,18 @@
+# Secrets — never commit
+.env
+*.env
+secrets.md
+
+# SQLite databases
+*.db
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.pytest_cache/
+
+# Virtual environments
+venv/
+.venv/
+env/
