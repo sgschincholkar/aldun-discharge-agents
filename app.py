@@ -158,7 +158,17 @@ HTML = """<!DOCTYPE html>
     .status-complete { background: #052e16; color: #4ade80; }
     .status-failed { background: #2d1515; color: #f87171; }
     .status-running { background: #1e293b; color: #fbbf24; }
-    .agent-body { padding: 14px; display: flex; flex-direction: column; gap: 5px; }
+    .agent-body {
+      padding: 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+      max-height: 340px;
+      overflow-y: auto;
+    }
+    .agent-body::-webkit-scrollbar { width: 6px; }
+    .agent-body::-webkit-scrollbar-track { background: #0f172a; }
+    .agent-body::-webkit-scrollbar-thumb { background: #334155; border-radius: 3px; }
     .line-ok { color: #4ade80; }
     .line-done { color: #e2e8f0; font-weight: bold; }
     .line-err { color: #f87171; }
@@ -191,14 +201,19 @@ HTML = """<!DOCTYPE html>
     .tool-name { color: #38bdf8; font-weight: bold; }
     .tool-args { color: #94a3b8; }
     .tool-result {
-      color: #475569;
+      color: #64748b;
       font-size: 10px;
-      padding: 2px 0 6px 12px;
+      padding: 4px 8px 8px 12px;
       border-left: 2px solid #1e293b;
       margin-left: 8px;
-      word-break: break-all;
-      white-space: pre-wrap;
+      margin-bottom: 4px;
+      white-space: pre;
+      overflow-x: auto;
+      background: #0a0f1a;
+      border-radius: 0 4px 4px 0;
     }
+    .tool-result::-webkit-scrollbar { height: 4px; }
+    .tool-result::-webkit-scrollbar-thumb { background: #334155; border-radius: 2px; }
 
     /* Spinner */
     .spinner {
@@ -350,7 +365,7 @@ HTML = """<!DOCTYPE html>
           const argsStr = Object.entries(event.args).map(([k,v]) => `${k}=${JSON.stringify(v)}`).join(', ');
           rows += `<div class="tool-call">→ <span class="tool-name">${escHtml(event.name)}</span>(<span class="tool-args">${escHtml(argsStr)}</span>)</div>`;
         } else if (event.type === 'tool_result') {
-          rows += `<div class="tool-result">${escHtml(JSON.stringify(event.result, null, 0))}</div>`;
+          rows += `<div class="tool-result">${escHtml(JSON.stringify(event.result, null, 2))}</div>`;
         } else if (event.type === 'summary') {
           rows += event.lines.map(l => `<div class="${lineClass(l)}">${escHtml(l)}</div>`).join('');
         } else if (event.type === 'error') {
