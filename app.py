@@ -12,9 +12,15 @@ from flask import Flask, request, jsonify, render_template_string
 sys.path.insert(0, os.path.dirname(__file__))
 
 from db import init_db, create_case, get_case
+from observability import init_tracing
 
 app = Flask(__name__)
 DB_PATH = "cases.db"
+
+try:
+    init_tracing()
+except EnvironmentError:
+    pass  # Phoenix env vars not set — tracing disabled
 
 HTML = """<!DOCTYPE html>
 <html lang="en">

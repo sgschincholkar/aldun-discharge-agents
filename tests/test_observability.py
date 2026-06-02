@@ -42,3 +42,13 @@ def test_init_tracing_idempotent(monkeypatch):
     observability.init_tracing()
     # Second call should not raise and should return silently
     observability.init_tracing()
+
+
+def test_app_imports_without_error(monkeypatch):
+    """app.py must load without error even when Phoenix env vars are missing."""
+    monkeypatch.delenv("PHOENIX_API_KEY", raising=False)
+    monkeypatch.delenv("PHOENIX_COLLECTOR_ENDPOINT", raising=False)
+    import importlib
+    import app as app_module
+    importlib.reload(app_module)
+    assert app_module.app is not None
