@@ -1,6 +1,7 @@
 import json
 import os
 from openai import OpenAI
+from opentelemetry import trace as otel_trace
 from db import get_case, update_case, log_event
 from guardrails import (
     GuardrailError, inter_agent_state_check,
@@ -133,6 +134,12 @@ def _execute_tool(name: str, inputs: dict, case_id: str, case_row: dict, db_path
 
 def run(case_id: str, db_path: str = "cases.db") -> dict:
     """Run payment collection agent. Returns {success, trace}."""
+    tracer = otel_trace.get_tracer(__name__)
+    with tracer.start_as_current_span("agent3.payment_collection", attributes={"case_id": case_id}):
+        return _run(case_id, db_path)
+
+
+def _run(case_id: str, db_path: str = "cases.db") -> dict:
     print("\n[Agent 3 — Payment Collection]")
     case_row = get_case(case_id, db_path)
     trace = []
