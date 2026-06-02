@@ -1,4 +1,4 @@
-# Aldun Agent — Project Instructions
+# Aldun Discharge Agents — Project Instructions
 
 ## Overview
 3-agent system for hospital discharge automation.

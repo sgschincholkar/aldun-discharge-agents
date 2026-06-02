@@ -1,5 +1,5 @@
 """
-Aldun Agent Test UI — Flask web app for testing Agent 1 & Agent 2 live.
+Aldun Discharge Agents — Flask web app for testing Agent 1, Agent 2 & Agent 3 live.
 Run: python3 app.py
 Open: http://localhost:5000
 """
@@ -21,7 +21,7 @@ HTML = """<!DOCTYPE html>
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Aldun Agent Test UI</title>
+  <title>Aldun Discharge Agents</title>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body {
@@ -29,7 +29,7 @@ HTML = """<!DOCTYPE html>
       color: #e2e8f0;
       font-family: 'SF Mono', 'Fira Code', monospace;
       font-size: 13px;
-      height: 100vh;
+      min-height: 100vh;
       display: flex;
       flex-direction: column;
     }
@@ -46,7 +46,7 @@ HTML = """<!DOCTYPE html>
     .main {
       display: flex;
       flex: 1;
-      overflow: hidden;
+      align-items: flex-start;
     }
 
     /* LEFT PANEL */
@@ -56,6 +56,9 @@ HTML = """<!DOCTYPE html>
       background: #0f172a;
       border-right: 1px solid #1e293b;
       padding: 20px;
+      position: sticky;
+      top: 0;
+      height: 100vh;
       overflow-y: auto;
       display: flex;
       flex-direction: column;
@@ -116,7 +119,6 @@ HTML = """<!DOCTYPE html>
       flex: 1;
       background: #020617;
       padding: 20px;
-      overflow-y: auto;
       display: flex;
       flex-direction: column;
       gap: 16px;
@@ -163,12 +165,7 @@ HTML = """<!DOCTYPE html>
       display: flex;
       flex-direction: column;
       gap: 5px;
-      max-height: 340px;
-      overflow-y: auto;
     }
-    .agent-body::-webkit-scrollbar { width: 6px; }
-    .agent-body::-webkit-scrollbar-track { background: #0f172a; }
-    .agent-body::-webkit-scrollbar-thumb { background: #334155; border-radius: 3px; }
     .line-ok { color: #4ade80; }
     .line-done { color: #e2e8f0; font-weight: bold; }
     .line-err { color: #f87171; }
@@ -230,7 +227,7 @@ HTML = """<!DOCTYPE html>
 </head>
 <body>
   <header>
-    <h1>🏥 Aldun Agent Test UI</h1>
+    <h1>🏥 Aldun Discharge Agents</h1>
     <span class="tag">Agent 1 → Agent 2 → Agent 3</span>
     <span class="tag">qwen/qwen3.5-flash-02-23</span>
   </header>
@@ -459,7 +456,7 @@ def run_agents():
 
 if __name__ == "__main__":
     init_db(DB_PATH)
-    print("\n🏥 Aldun Agent Test UI")
+    print("\n🏥 Aldun Discharge Agents")
     print("   Open: http://localhost:5000")
     print("   Set OPENROUTER_API_KEY before running\n")
     app.run(debug=False, port=5001)
