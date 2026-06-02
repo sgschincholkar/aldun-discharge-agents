@@ -11,6 +11,9 @@ def init_tracing():
     """Initialise Phoenix cloud tracing. Call once at app startup."""
     global _instrumented
 
+    if _instrumented:
+        return
+
     api_key = os.environ.get("PHOENIX_API_KEY")
     if not api_key:
         raise EnvironmentError("PHOENIX_API_KEY is not set. Add it to your .env file.")
@@ -29,6 +32,5 @@ def init_tracing():
         )
     )
 
-    if not _instrumented:
-        OpenAIInstrumentor().instrument(tracer_provider=tracer_provider)
-        _instrumented = True
+    OpenAIInstrumentor().instrument(tracer_provider=tracer_provider)
+    _instrumented = True

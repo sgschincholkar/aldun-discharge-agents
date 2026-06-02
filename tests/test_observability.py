@@ -30,3 +30,15 @@ def test_init_tracing_missing_endpoint(monkeypatch):
     importlib.reload(observability)
     with pytest.raises(EnvironmentError, match="PHOENIX_COLLECTOR_ENDPOINT"):
         observability.init_tracing()
+
+
+def test_init_tracing_idempotent(monkeypatch):
+    monkeypatch.setenv("PHOENIX_API_KEY", "test-key")
+    monkeypatch.setenv("PHOENIX_COLLECTOR_ENDPOINT", "http://localhost:6006/v1/traces")
+    import importlib
+    import observability
+    importlib.reload(observability)
+    # First call
+    observability.init_tracing()
+    # Second call should not raise and should return silently
+    observability.init_tracing()
