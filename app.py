@@ -231,7 +231,7 @@ HTML = """<!DOCTYPE html>
 <body>
   <header>
     <h1>🏥 Aldun Agent Test UI</h1>
-    <span class="tag">Agent 1 → Agent 2</span>
+    <span class="tag">Agent 1 → Agent 2 → Agent 3</span>
     <span class="tag">qwen/qwen3.5-flash-02-23</span>
   </header>
 
@@ -273,7 +273,7 @@ HTML = """<!DOCTYPE html>
         <input id="tpa_name" type="text" value="Medi Assist">
       </div>
 
-      <button class="btn-run" id="runBtn" onclick="runAgents()">▶ Run Agent 1 → Agent 2</button>
+      <button class="btn-run" id="runBtn" onclick="runAgents()">▶ Run Agent 1 → Agent 2 → Agent 3</button>
       <button class="btn-reset" onclick="resetUI()">↺ Reset</button>
     </div>
 
@@ -328,7 +328,7 @@ HTML = """<!DOCTYPE html>
       }
 
       btn.disabled = false;
-      btn.innerHTML = '▶ Run Agent 1 → Agent 2';
+      btn.innerHTML = '▶ Run Agent 1 → Agent 2 → Agent 3';
     }
 
     function renderResult(r) {
@@ -337,6 +337,7 @@ HTML = """<!DOCTYPE html>
 
       if (r.agent1) html += renderAgentBlock('Agent 1 — Onboarding', r.agent1);
       if (r.agent2) html += renderAgentBlock('Agent 2 — Discharge & Claims', r.agent2);
+      if (r.agent3) html += renderAgentBlock('Agent 3 — Payment Collection', r.agent3);
 
       if (r.case_summary) {
         const s = r.case_summary;
@@ -348,8 +349,10 @@ HTML = """<!DOCTYPE html>
               <div class="summary-item"><div class="key">TPA Claim ID</div><div class="val">${s.tpa_claim_id || '—'}</div></div>
               <div class="summary-item"><div class="key">Onboarding</div><div class="val ${s.onboarding_status === 'complete' ? 'val-green' : 'val-red'}">${s.onboarding_status || '—'}</div></div>
               <div class="summary-item"><div class="key">Claim Status</div><div class="val ${s.claim_status === 'filed' ? 'val-green' : 'val-red'}">${s.claim_status || '—'}</div></div>
-              <div class="summary-item"><div class="key">KYC Verified</div><div class="val ${s.kyc_verified ? 'val-green' : 'val-red'}">${s.kyc_verified ? 'yes' : 'no'}</div></div>
-              <div class="summary-item"><div class="key">Credit Approved</div><div class="val ${s.credit_approved ? 'val-green' : 'val-red'}">${s.credit_approved ? 'yes' : 'no'}</div></div>
+              <div class="summary-item"><div class="key">Case Status</div><div class="val ${s.case_status === 'closed' ? 'val-green' : 'val-red'}">${s.case_status || '—'}</div></div>
+              <div class="summary-item"><div class="key">Patient Paid</div><div class="val ${s.patient_paid ? 'val-green' : 'val-red'}">${s.patient_paid ? 'yes' : 'no'}</div></div>
+              <div class="summary-item"><div class="key">TPA Received</div><div class="val">${s.tpa_amount_received_inr ? 'Rs ' + s.tpa_amount_received_inr.toLocaleString() : '—'}</div></div>
+              <div class="summary-item"><div class="key">Patient Deductible</div><div class="val">${s.patient_deductible_inr ? 'Rs ' + s.patient_deductible_inr.toLocaleString() : '—'}</div></div>
             </div>
           </div>`;
       }
@@ -425,6 +428,7 @@ def run_agents():
         "case_id": case_id,
         "agent1": {"success": a1["success"], "trace": a1["trace"]},
         "agent2": None,
+        "agent3": None,
         "case_summary": None,
     }
 
@@ -433,14 +437,21 @@ def run_agents():
         a2 = run_discharge(case_id, db_path=DB_PATH)
         result["agent2"] = {"success": a2["success"], "trace": a2["trace"]}
 
+        if a2["success"]:
+            from agents.payment_collection import run as run_payment
+            a3 = run_payment(case_id, db_path=DB_PATH)
+            result["agent3"] = {"success": a3["success"], "trace": a3["trace"]}
+
     case_row = get_case(case_id, db_path=DB_PATH)
     result["case_summary"] = {
         "case_id": case_id,
         "tpa_claim_id": case_row.get("tpa_claim_id"),
         "onboarding_status": case_row.get("onboarding_status"),
         "claim_status": case_row.get("claim_status"),
-        "kyc_verified": case_row.get("kyc_verified"),
-        "credit_approved": case_row.get("credit_approved"),
+        "case_status": case_row.get("case_status"),
+        "patient_paid": case_row.get("patient_paid"),
+        "tpa_amount_received_inr": case_row.get("tpa_amount_received_inr"),
+        "patient_deductible_inr": case_row.get("patient_deductible_inr"),
     }
 
     return jsonify(result)
