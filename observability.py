@@ -1,4 +1,5 @@
 import os
+from opentelemetry import trace as otel_trace
 from phoenix.otel import register
 from openinference.instrumentation.openai import OpenAIInstrumentor
 from openinference.instrumentation import TraceConfig
@@ -19,13 +20,15 @@ def init_tracing():
     if not os.environ.get("PHOENIX_COLLECTOR_ENDPOINT"):
         raise EnvironmentError("PHOENIX_COLLECTOR_ENDPOINT is not set. Add it to your .env file.")
 
-    # Register tracer provider — do NOT use auto_instrument so we control config
+    # register() sets this as the global OTel tracer provider
     tracer_provider = register(
         project_name="Aldun_Discharge_Agents",
         auto_instrument=False,
+        set_global_tracer_provider=True,
     )
 
-    # Explicitly instrument OpenAI with full input/output capture
+    # Instrument OpenAI SDK — captures every chat.completions call
+    # with full message content, tool calls, token counts
     OpenAIInstrumentor().instrument(
         tracer_provider=tracer_provider,
         config=TraceConfig(
@@ -39,3 +42,8 @@ def init_tracing():
     )
 
     _instrumented = True
+
+
+def get_tracer(name: str):
+    """Return a tracer using the global provider set by init_tracing()."""
+    return otel_trace.get_tracer(name)
