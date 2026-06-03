@@ -162,7 +162,7 @@ def _run(case_id: str, db_path: str = "cases.db") -> dict:
     except GuardrailError as e:
         print(f"  ✗ Pre-condition failed: {e}")
         update_case(case_id, {"claim_status": "GUARDRAIL_FAILED"}, db_path)
-        return False
+        return {"success": False, "trace": [{"type": "error", "message": f"PRE-CONDITION FAILED: {e}"}]}
 
     system_prompt = f"""You are the Aldun Discharge & Claims Agent.
 Your job is to collect all required documents and file an insurance claim to the TPA so the patient can be discharged.
