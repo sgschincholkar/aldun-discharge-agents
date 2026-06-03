@@ -1,6 +1,6 @@
 import os
 from opentelemetry import trace as otel_trace
-from phoenix.otel import register
+from arize.otel import register
 from openinference.instrumentation.openai import OpenAIInstrumentor
 from openinference.instrumentation import TraceConfig
 
@@ -8,27 +8,27 @@ _instrumented = False
 
 
 def init_tracing():
-    """Initialise Phoenix cloud tracing. Call once at app startup."""
+    """Initialise Arize AX tracing. Call once at app startup."""
     global _instrumented
 
     if _instrumented:
         return
 
-    if not os.environ.get("PHOENIX_API_KEY"):
-        raise EnvironmentError("PHOENIX_API_KEY is not set. Add it to your .env file.")
+    if not os.environ.get("ARIZE_API_KEY"):
+        raise EnvironmentError("ARIZE_API_KEY is not set. Add it to your .env file.")
 
-    if not os.environ.get("PHOENIX_COLLECTOR_ENDPOINT"):
-        raise EnvironmentError("PHOENIX_COLLECTOR_ENDPOINT is not set. Add it to your .env file.")
+    if not os.environ.get("ARIZE_SPACE_ID"):
+        raise EnvironmentError("ARIZE_SPACE_ID is not set. Add it to your .env file.")
 
-    # register() sets this as the global OTel tracer provider
+    # register() sends traces to Arize AX — reads ARIZE_API_KEY and ARIZE_SPACE_ID from env
     tracer_provider = register(
+        space_id=os.environ["ARIZE_SPACE_ID"],
+        api_key=os.environ["ARIZE_API_KEY"],
         project_name="Aldun_Discharge_Agents",
-        auto_instrument=False,
         set_global_tracer_provider=True,
     )
 
-    # Instrument OpenAI SDK — captures every chat.completions call
-    # with full message content, tool calls, token counts
+    # Instrument OpenAI SDK with full input/output/message capture
     OpenAIInstrumentor().instrument(
         tracer_provider=tracer_provider,
         config=TraceConfig(

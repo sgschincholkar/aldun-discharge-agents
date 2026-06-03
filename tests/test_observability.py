@@ -3,8 +3,8 @@ import pytest
 
 
 def test_init_tracing_runs_without_error(monkeypatch):
-    monkeypatch.setenv("PHOENIX_API_KEY", "test-key")
-    monkeypatch.setenv("PHOENIX_COLLECTOR_ENDPOINT", "http://localhost:6006/v1/traces")
+    monkeypatch.setenv("ARIZE_API_KEY", "test-key")
+    monkeypatch.setenv("ARIZE_SPACE_ID", "test-space-id")
     import importlib
     import observability
     importlib.reload(observability)
@@ -13,28 +13,28 @@ def test_init_tracing_runs_without_error(monkeypatch):
 
 
 def test_init_tracing_missing_api_key(monkeypatch):
-    monkeypatch.delenv("PHOENIX_API_KEY", raising=False)
-    monkeypatch.setenv("PHOENIX_COLLECTOR_ENDPOINT", "http://localhost:6006/v1/traces")
+    monkeypatch.delenv("ARIZE_API_KEY", raising=False)
+    monkeypatch.setenv("ARIZE_SPACE_ID", "test-space-id")
     import importlib
     import observability
     importlib.reload(observability)
-    with pytest.raises(EnvironmentError, match="PHOENIX_API_KEY"):
+    with pytest.raises(EnvironmentError, match="ARIZE_API_KEY"):
         observability.init_tracing()
 
 
-def test_init_tracing_missing_endpoint(monkeypatch):
-    monkeypatch.setenv("PHOENIX_API_KEY", "test-key")
-    monkeypatch.delenv("PHOENIX_COLLECTOR_ENDPOINT", raising=False)
+def test_init_tracing_missing_space_id(monkeypatch):
+    monkeypatch.setenv("ARIZE_API_KEY", "test-key")
+    monkeypatch.delenv("ARIZE_SPACE_ID", raising=False)
     import importlib
     import observability
     importlib.reload(observability)
-    with pytest.raises(EnvironmentError, match="PHOENIX_COLLECTOR_ENDPOINT"):
+    with pytest.raises(EnvironmentError, match="ARIZE_SPACE_ID"):
         observability.init_tracing()
 
 
 def test_init_tracing_idempotent(monkeypatch):
-    monkeypatch.setenv("PHOENIX_API_KEY", "test-key")
-    monkeypatch.setenv("PHOENIX_COLLECTOR_ENDPOINT", "http://localhost:6006/v1/traces")
+    monkeypatch.setenv("ARIZE_API_KEY", "test-key")
+    monkeypatch.setenv("ARIZE_SPACE_ID", "test-space-id")
     import importlib
     import observability
     importlib.reload(observability)
@@ -45,9 +45,9 @@ def test_init_tracing_idempotent(monkeypatch):
 
 
 def test_app_imports_without_error(monkeypatch):
-    """app.py must load without error even when Phoenix env vars are missing."""
-    monkeypatch.delenv("PHOENIX_API_KEY", raising=False)
-    monkeypatch.delenv("PHOENIX_COLLECTOR_ENDPOINT", raising=False)
+    """app.py must load without error even when Arize env vars are missing."""
+    monkeypatch.delenv("ARIZE_API_KEY", raising=False)
+    monkeypatch.delenv("ARIZE_SPACE_ID", raising=False)
     import importlib
     import app as app_module
     importlib.reload(app_module)
