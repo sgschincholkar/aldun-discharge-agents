@@ -201,6 +201,7 @@ Complete all steps."""
                 messages=messages,
                 tools=TOOLS,
                 tool_choice="auto",
+                extra_body={"thinking": {"type": "disabled"}},
             )
 
             msg = response.choices[0].message
