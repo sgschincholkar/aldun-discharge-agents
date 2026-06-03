@@ -2,6 +2,7 @@ import json
 import os
 from openai import OpenAI
 from opentelemetry import trace as otel_trace
+from openinference.semconv.trace import SpanAttributes, OpenInferenceSpanKindValues
 from db import get_case, update_case, log_event
 from guardrails import (
     GuardrailError, mask_aadhaar, ocr_confidence_check,
@@ -150,8 +151,19 @@ def _execute_tool(name: str, inputs: dict, case_id: str, case_row: dict, db_path
 def run(case_id: str, db_path: str = "cases.db") -> dict:
     """Run onboarding agent. Returns {success, trace} where trace is a list of events."""
     tracer = otel_trace.get_tracer(__name__)
-    with tracer.start_as_current_span("agent1.onboarding", attributes={"case_id": case_id}):
-        return _run(case_id, db_path)
+    with tracer.start_as_current_span(
+        "agent1.onboarding",
+        attributes={
+            SpanAttributes.OPENINFERENCE_SPAN_KIND: OpenInferenceSpanKindValues.AGENT.value,
+            SpanAttributes.INPUT_VALUE: f"Onboard patient for case {case_id}",
+            "case_id": case_id,
+        },
+    ) as span:
+        result = _run(case_id, db_path)
+        span.set_attribute(SpanAttributes.OUTPUT_VALUE, f"success={result['success']}")
+        if not result["success"]:
+            span.set_status(otel_trace.Status(otel_trace.StatusCode.ERROR))
+        return result
 
 
 def _run(case_id: str, db_path: str = "cases.db") -> dict:
